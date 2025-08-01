@@ -1,5 +1,5 @@
 // UserNotFoundException.java
-package com.example.userservice.exception;
+package com.example.demo.exception;
 
 public class UserNotFoundException extends RuntimeException {
     public UserNotFoundException(String message) {

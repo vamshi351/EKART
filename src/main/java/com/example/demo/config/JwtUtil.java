@@ -1,3 +1,4 @@
+// src/main/java/com/example/demo/config/JwtUtil.java
 package com.example.demo.config;
 
 import io.jsonwebtoken.*;
@@ -6,6 +7,7 @@ import io.jsonwebtoken.security.SignatureException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.userdetails.UserDetails; // Make sure this import exists
 import org.springframework.stereotype.Component;
 
 import java.security.Key;
@@ -23,7 +25,6 @@ public class JwtUtil {
     private long expirationMs;
 
     private Key getSigningKey() {
-        // It's important that secret length matches HS256 requirements (at least 256 bits)
         return Keys.hmacShaKeyFor(secret.getBytes());
     }
 
@@ -56,7 +57,7 @@ public class JwtUtil {
 
         } catch (ExpiredJwtException e) {
             logger.warn("JWT token is expired: {}", e.getMessage());
-            throw e;
+            throw e; // Re-throw to be caught by the filter for logging, or handle as needed
         } catch (UnsupportedJwtException e) {
             logger.error("JWT token is unsupported: {}", e.getMessage());
             throw e;
@@ -72,16 +73,29 @@ public class JwtUtil {
         }
     }
 
-    public boolean validateToken(String token) {
+    // This is the correct validateToken method to use in the filter
+    public boolean validateToken(String token, UserDetails userDetails) {
         try {
-            Jwts.parserBuilder()
-                    .setSigningKey(getSigningKey())
-                    .build()
-                    .parseClaimsJws(token);
-            return true;
+            final String email = extractEmail(token); // This will throw if the token is invalid/expired
+            return (email.equals(userDetails.getUsername()) && !isTokenExpired(token));
         } catch (JwtException | IllegalArgumentException e) {
-            logger.warn("Invalid JWT token: {}", e.getMessage());
+            // Log for debugging, but the exception from extractEmail already provides details
+            logger.warn("Token validation failed for user {}: {}", userDetails.getUsername(), e.getMessage());
             return false;
         }
+    }
+
+    private boolean isTokenExpired(String token) {
+        // This method also internally calls extractExpiration, which uses Jwts.parserBuilder()...
+        return extractExpiration(token).before(new Date());
+    }
+
+    private Date extractExpiration(String token) {
+        Claims claims = Jwts.parserBuilder()
+                .setSigningKey(getSigningKey())
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+        return claims.getExpiration();
     }
 }

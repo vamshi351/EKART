@@ -4,6 +4,8 @@ package com.example.demo.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -12,6 +14,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.demo.dto.LoginRequest;
 import com.example.demo.dto.RegisterRequest;
+import com.example.demo.dto.VerifyOtpRequest;
+import com.example.demo.response.LoginResponse;
 import com.example.demo.service.UserService;
 
 import jakarta.validation.Valid;
@@ -26,13 +30,29 @@ public class AuthController {
 
  @PostMapping("/register")
  public ResponseEntity<String> register(@Valid @RequestBody RegisterRequest request) {
-     userService.register(request);
-     return ResponseEntity.ok("User registered successfully");
+     String message = userService.register(request);
+     return ResponseEntity.ok(message);
  }
 
+
+ @Autowired
+ private AuthenticationManager authenticationManager;
+
  @PostMapping("/login")
- public ResponseEntity<String> login(@Valid @RequestBody LoginRequest request) {
-     String token = userService.login(request.getEmail(), request.getPassword());
-     return ResponseEntity.ok(token);
+ public LoginResponse login(@RequestBody LoginRequest request) {
+     authenticationManager.authenticate(
+         new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
+     );
+     return userService.loginWithoutAuthentication(request.getEmail());
  }
+
+
+ 
+ @PostMapping("/verify-otp")
+ public ResponseEntity<String> verifyOtp(@Valid @RequestBody VerifyOtpRequest request) {
+     String jwtToken = userService.verifyOtp(request);
+     return ResponseEntity.ok(jwtToken);
+ }
+
+ 
 }
