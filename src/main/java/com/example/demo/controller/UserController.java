@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.demo.dto.UpdateEmailRequest;
 import com.example.demo.dto.UpdateUserRequest;
+import com.example.demo.dto.UserDTO;
+import com.example.demo.model.User;
 import com.example.demo.service.UserService;
 
 @RestController
@@ -47,11 +49,13 @@ public class UserController {
 
  @GetMapping("/me")
  public ResponseEntity<?> getMe(Authentication authentication) {
-     if (authentication == null) {
+     if (authentication == null || authentication.getName() == null) {
          return ResponseEntity.status(401).body("Unauthorized");
      }
 
-     return ResponseEntity.ok("Authenticated user: " + authentication.getName());
+     User user = userService.getUserByEmail(authentication.getName());
+     return ResponseEntity.ok(new UserDTO(user.getName(), user.getEmail(), user.getPhone()));
  }
+
 
 }
