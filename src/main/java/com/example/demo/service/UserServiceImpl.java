@@ -149,7 +149,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
             throw new OtpValidationException("Email not verified. Please verify OTP.");
         }
         String token = jwtUtil.generateToken(user.getEmail());
-        return new LoginResponse(token, new UserDTO(user));
+        return new LoginResponse(token, new UserDTO(user.getName(),user.getEmail(),user.getPhone()));
     }
 
     @Override
@@ -191,7 +191,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         }
 
         String token = jwtUtil.generateToken(user.getEmail());
-        return new LoginResponse(token, new UserDTO(user));
+        return new LoginResponse(token, new UserDTO(user.getName(),user.getEmail(),user.getPhone()));
     }
     
     

@@ -1,20 +1,16 @@
 package com.example.demo.dto;
 
-import com.example.demo.model.User;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 
 //src/main/java/com/example/demo/dto/UserDTO.java
 
+@Data
+@AllArgsConstructor
 public class UserDTO {
     private String name;
-
-    public UserDTO(User user) {
-        this.name = user.getName();
-    }
-
-    // ⚠️ Add only this safely
-    public String getName() {
-        return name;
-    }
+    private String phone;
+    private String email;
 
     // ❌ Don't add `User user` as a field or @ToString/@Data
 }

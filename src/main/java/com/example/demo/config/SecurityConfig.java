@@ -52,7 +52,7 @@ public class SecurityConfig {
         http.csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/register", "/api/auth/login", "/api/auth/verify-otp").permitAll()
-                .requestMatchers("/api/users/update-email").authenticated()
+                .requestMatchers("/api/users/update-email","/api/users/me").authenticated()
                 .requestMatchers("/api/users/edit/**").hasAnyRole("USER", "ADMIN")
                 .requestMatchers("/api/users/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
