@@ -142,6 +142,25 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
         return userRepository.save(user);
     }
+    
+    @Override
+    public User updateUserByUsername(String username, UpdateUserRequest request) {
+        User user = userRepository.findByEmail(username) // Assuming JWT stores email
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+        boolean isAdmin = user.getRole().equals(Role.ADMIN);
+
+        if (request.getName() != null) user.setName(request.getName());
+
+        if (request.getPhone() != null) user.setPhone(request.getPhone());
+
+        if (isAdmin && request.getRole() != null) {
+            user.setRole(Role.valueOf(request.getRole().toUpperCase()));
+        }
+
+        return userRepository.save(user);
+    }
+
 
     @Override
     public User updateEmail(Long id, UpdateEmailRequest request) {
@@ -231,4 +250,13 @@ public class UserServiceImpl implements UserService, UserDetailsService {
                 Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()))
         );
     }
+    
+    @Override
+    public void deleteUserById(Long id) {
+        if (!userRepository.existsById(id)) {
+            throw new UserNotFoundException("User not found with id: " + id);
+        }
+        userRepository.deleteById(id);
+    }
+
 }

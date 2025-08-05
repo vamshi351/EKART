@@ -8,6 +8,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -41,12 +42,14 @@ public class UserController {
      return ResponseEntity.ok(userService.getUserById(id));
  }
 
- @PutMapping("/edit/{id}")
+ @PutMapping("/edit")
  @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
- public ResponseEntity<?> editUser(@PathVariable Long id,
-                                   @RequestBody UpdateUserRequest request) {
-     return ResponseEntity.ok(userService.updateUser(id, request));
+ public ResponseEntity<?> editUser(@RequestBody UpdateUserRequest request, Authentication authentication) {
+     String username = authentication.getName(); // Extract from JWT
+     return ResponseEntity.ok(userService.updateUserByUsername(username, request));
  }
+
+
 
  @PutMapping("/update-email")
  public ResponseEntity<?> updateEmail(
@@ -69,6 +72,14 @@ public class UserController {
          return ResponseEntity.badRequest().body(e.getMessage());
      }
  }
+ 
+ @DeleteMapping("/delete/{id}")
+ @PreAuthorize("hasRole('ADMIN')")
+ public ResponseEntity<?> deleteUser(@PathVariable Long id) {
+     userService.deleteUserById(id);
+     return ResponseEntity.ok("User with ID " + id + " deleted successfully.");
+ }
+
 
 
  @GetMapping("/me")

@@ -6,6 +6,7 @@ import lombok.Data;
 
 @Data
 public class UpdateUserRequest {
- private String name;
- private String role; // ADMIN or USER
+    private String name;
+    private String phone;
+    private String role; // optional, only for admin
 }
