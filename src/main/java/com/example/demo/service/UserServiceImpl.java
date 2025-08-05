@@ -1,13 +1,11 @@
 package com.example.demo.service;
 
+import java.util.Collections;
 import java.util.Optional;
 
-import org.springframework.context.annotation.Lazy; // Import @Lazy
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority; // Added for UserDetails
-import org.springframework.security.core.userdetails.UserDetails; // Added for UserDetails
-import org.springframework.security.core.userdetails.UserDetailsService; // Added for UserDetailsService
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -20,39 +18,39 @@ import com.example.demo.dto.UserDTO;
 import com.example.demo.dto.VerifyOtpRequest;
 import com.example.demo.exception.EmailAlreadyExistsException;
 import com.example.demo.exception.OtpValidationException;
+import com.example.demo.exception.UserNotFoundException;
 import com.example.demo.model.Role;
 import com.example.demo.model.User;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.response.LoginResponse;
-import com.example.demo.exception.UserNotFoundException; // Assuming this is correct path
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService, UserDetailsService {
-	
-    
+
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
     private final JwtUtil jwtUtil;
 
-
     @Override
     public String register(RegisterRequest request) {
-        // ... (your existing register method)
-        Optional<User> existingUserOpt = userRepository.findByEmail(request.getEmail());
+        if (request.getPhone().length() != 10) {
+            throw new IllegalArgumentException("Phone number must be 10 digits.");
+        }
 
+        Optional<User> existingUserOpt = userRepository.findByEmail(request.getEmail());
         if (existingUserOpt.isPresent()) {
             User existingUser = existingUserOpt.get();
-
             if (existingUser.isEmailVerified()) {
                 throw new EmailAlreadyExistsException("Email already in use: " + request.getEmail());
             } else {
-                // User exists but not verified - resend OTP
                 String otp = generateOtp();
                 existingUser.setOtp(otp);
+                existingUser.setOtpGeneratedTime(System.currentTimeMillis());
                 userRepository.save(existingUser);
                 emailService.sendOtpEmail(existingUser.getEmail(), otp);
                 return "OTP re-sent to existing unverified user.";
@@ -73,11 +71,12 @@ public class UserServiceImpl implements UserService, UserDetailsService {
                 .role(Role.USER)
                 .otp(otp)
                 .emailVerified(false)
+                .otpGeneratedTime(System.currentTimeMillis())
                 .build();
 
         userRepository.save(user);
         emailService.sendOtpEmail(user.getEmail(), otp);
-        return "OTP sent. Please verify to complete registration.";
+        return "OTP sent to " + user.getEmail() + ". Please verify to complete registration.";
     }
 
     private String generateOtp() {
@@ -85,71 +84,85 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     }
 
     @Override
-    public String verifyOtp(VerifyOtpRequest request) {
-        // ... (your existing verifyOtp method)
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+    public LoginResponse verifyOtp(@Valid VerifyOtpRequest request) {
+        // Try finding user by current email
+        Optional<User> userOpt = userRepository.findByEmail(request.getEmail());
 
-        if (user.isEmailVerified()) {
-            return "Email already verified. Please login.";
+        // If not found, try by pending email (email update scenario)
+        if (userOpt.isEmpty()) {
+            userOpt = userRepository.findByPendingEmail(request.getEmail());
         }
 
-        if (request.getOtp().equals(user.getOtp())) {
-            user.setEmailVerified(true);
-            user.setOtp(null);
-            userRepository.save(user);
-            return "OTP verified successfully. Please login to continue.";
-        } else {
+        User user = userOpt.orElseThrow(() ->
+            new UsernameNotFoundException("User not found with email: " + request.getEmail())
+        );
+
+        long currentTime = System.currentTimeMillis();
+        long expiry = 3 * 60 * 1000; // 3 minutes
+
+        if (user.getOtpGeneratedTime() == null || (currentTime - user.getOtpGeneratedTime()) > expiry) {
+            throw new OtpValidationException("OTP has expired. Please request a new one.");
+        }
+
+        if (!request.getOtp().equals(user.getOtp())) {
             throw new OtpValidationException("Invalid OTP");
         }
+
+        // ✅ Commit email change if pending
+        if (user.getPendingEmail() != null) {
+            Optional<User> emailTaken = userRepository.findByEmail(user.getPendingEmail());
+            if (emailTaken.isPresent() && !emailTaken.get().getId().equals(user.getId())) {
+                throw new EmailAlreadyExistsException("Email already taken: " + user.getPendingEmail());
+            }
+
+            user.setEmail(user.getPendingEmail());
+            user.setPendingEmail(null);
+        }
+
+        user.setEmailVerified(true);
+        user.setOtp(null);
+        user.setOtpGeneratedTime(null);
+
+        User savedUser = userRepository.save(user);
+
+        String token = jwtUtil.generateToken(savedUser.getEmail());
+        UserDTO userDTO = new UserDTO(savedUser.getName(), savedUser.getEmail(), savedUser.getPhone());
+
+        return new LoginResponse(token, userDTO);
     }
+
 
     @Override
     public User updateUser(Long id, UpdateUserRequest request) {
-        // ... (your existing updateUser method)
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new UserNotFoundException("User not found with id: " + id));
 
-        if (request.getName() != null) {
-            user.setName(request.getName());
-        }
-        if (request.getRole() != null) {
-            user.setRole(Role.valueOf(request.getRole().toUpperCase()));
-        }
+        if (request.getName() != null) user.setName(request.getName());
+        if (request.getRole() != null) user.setRole(Role.valueOf(request.getRole().toUpperCase()));
 
         return userRepository.save(user);
     }
 
     @Override
     public User updateEmail(Long id, UpdateEmailRequest request) {
-        // ... (your existing updateEmail method)
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
 
-        if (userRepository.findByEmail(request.getNewEmail()).isPresent()) {
+        Optional<User> emailOwner = userRepository.findByEmail(request.getNewEmail());
+        if (emailOwner.isPresent() && !emailOwner.get().getId().equals(id)) {
             throw new EmailAlreadyExistsException("Email already taken: " + request.getNewEmail());
         }
 
-        user.setEmail(request.getNewEmail());
+        // Set as pending
+        user.setPendingEmail(request.getNewEmail());
         user.setEmailVerified(false);
-
         String otp = generateOtp();
         user.setOtp(otp);
+        user.setOtpGeneratedTime(System.currentTimeMillis());
 
-        User updated = userRepository.save(user);
-        emailService.sendOtpEmail(updated.getEmail(), otp);
-        return updated;
-    }
-
-    public LoginResponse login(String email, String password) {
-        // DO NOT authenticate here, authenticate in controller or via filter!
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
-        if (!user.isEmailVerified()) {
-            throw new OtpValidationException("Email not verified. Please verify OTP.");
-        }
-        String token = jwtUtil.generateToken(user.getEmail());
-        return new LoginResponse(token, new UserDTO(user.getName(),user.getEmail(),user.getPhone()));
+        User updatedUser = userRepository.save(user);
+        emailService.sendOtpEmail(updatedUser.getPendingEmail(), otp);
+        return updatedUser;
     }
 
     @Override
@@ -164,36 +177,58 @@ public class UserServiceImpl implements UserService, UserDetailsService {
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
     }
 
-    // Implementation for UserDetailsService
     @Override
-    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+    public LoginResponse login(String email, String password) {
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
-        // Return a Spring Security UserDetails object:
-        return new org.springframework.security.core.userdetails.User(
-                user.getEmail(),
-                user.getPassword(),
-                user.isEmailVerified(), // enabled
-                true, // accountNonExpired
-                true, // credentialsNonExpired
-                true, // accountNonLocked
-                java.util.Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()))
-        );
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+        // Cannot login if not verified
+        if (!user.isEmailVerified()) {
+            throw new OtpValidationException("Email not verified. Please verify OTP.");
+        }
+        // Cannot login with pendingEmail and before OTP verification
+        if (user.getPendingEmail() != null) {
+            throw new OtpValidationException("Email update in progress. Please verify OTP sent to your new email to login.");
+        }
+        String token = jwtUtil.generateToken(user.getEmail());
+        return new LoginResponse(token, new UserDTO(user.getName(), user.getEmail(), user.getPhone()));
     }
 
     @Override
     public LoginResponse loginWithoutAuthentication(String email) {
         User user = userRepository.findByEmail(email)
-            .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
         if (!user.isEmailVerified()) {
             throw new OtpValidationException("Email not verified. Please verify OTP.");
         }
-
+        if (user.getPendingEmail() != null) {
+            throw new OtpValidationException("Email update in progress. Please verify OTP sent to your new email to login.");
+        }
         String token = jwtUtil.generateToken(user.getEmail());
-        return new LoginResponse(token, new UserDTO(user.getName(),user.getEmail(),user.getPhone()));
+        return new LoginResponse(token, new UserDTO(user.getName(), user.getEmail(), user.getPhone()));
     }
-    
-    
 
+    @Override
+    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
+
+        // Only block if email is NOT verified AND no pending change (i.e., registration pending)
+        if (!user.isEmailVerified() && user.getPendingEmail() == null) {
+            throw new UsernameNotFoundException("Email not verified. Please verify OTP.");
+        }
+
+        // ✅ Allow access if:
+        // - Email is verified
+        // - OR email is verified but pendingEmail is set (email update in progress)
+        return new org.springframework.security.core.userdetails.User(
+                user.getEmail(),
+                user.getPassword(),
+                true, // enabled
+                true, // accountNonExpired
+                true, // credentialsNonExpired
+                true, // accountNonLocked
+                Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()))
+        );
+    }
 }

@@ -1,4 +1,3 @@
-// src/main/java/com/example/demo/model/User.java
 package com.example.demo.model;
 
 import jakarta.persistence.*;
@@ -6,8 +5,8 @@ import lombok.*;
 
 @Entity
 @Table(name = "users", uniqueConstraints = {
-        @UniqueConstraint(columnNames = "email"),
-        @UniqueConstraint(columnNames = "phone")
+    @UniqueConstraint(columnNames = "email"),
+    @UniqueConstraint(columnNames = "phone")
 })
 @Data
 @NoArgsConstructor
@@ -24,7 +23,7 @@ public class User {
     @Column(nullable = false, unique = true)
     private String email;
 
-    @Column(nullable = false, unique = true, length = 10)
+    @Column(nullable = false, unique = true)
     private String phone;
 
     @Column(nullable = false)
@@ -35,5 +34,9 @@ public class User {
 
     private boolean emailVerified = false;
 
-    private String otp; // temporary OTP
+    private String otp;
+
+    private String pendingEmail; // Stores email to be updated to, until verified
+
+    private Long otpGeneratedTime;
 }

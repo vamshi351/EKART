@@ -49,8 +49,8 @@ public class AuthController {
 
  
  @PostMapping("/verify-otp")
- public ResponseEntity<String> verifyOtp(@Valid @RequestBody VerifyOtpRequest request) {
-     String jwtToken = userService.verifyOtp(request);
+ public ResponseEntity<LoginResponse> verifyOtp(@Valid @RequestBody VerifyOtpRequest request) {
+     LoginResponse jwtToken = userService.verifyOtp(request);
      return ResponseEntity.ok(jwtToken);
  }
 
