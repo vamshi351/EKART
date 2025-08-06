@@ -9,6 +9,7 @@ import org.springframework.security.authentication.dao.DaoAuthenticationProvider
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -51,7 +52,10 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**","/api/users/verify-otp-mail-updation").permitAll()
+                .requestMatchers("/api/auth/**","/api/users/verify-otp-mail-updation",
+                	    "/v3/api-docs/**",
+                	    "/swagger-ui/**",
+                	    "/swagger-ui.html").permitAll()
                 .requestMatchers("/api/users/update-email","/api/users/me").authenticated()
                 .requestMatchers("/api/users/edit/**").hasAnyRole("USER", "ADMIN")
                 .requestMatchers("/api/users/**").hasRole("ADMIN")

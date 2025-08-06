@@ -10,13 +10,12 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.demo.dto.EmailRequest;
 import com.example.demo.dto.LoginRequest;
 import com.example.demo.dto.RegisterRequest;
 import com.example.demo.dto.ResetPasswordRequest;
-import com.example.demo.dto.UpdateEmailRequest;
 import com.example.demo.dto.VerifyOtpRequest;
 import com.example.demo.response.LoginResponse;
 import com.example.demo.service.UserService;
@@ -58,9 +57,9 @@ public class AuthController {
  }
  
  @PostMapping("/forgot-password")
- public ResponseEntity<String> forgotPassword(@RequestBody UpdateEmailRequest email) {
+ public ResponseEntity<String> forgotPassword(@RequestBody EmailRequest email) {
 	 System.err.println(email);
-     String result = userService.initiateForgotPassword(email.getNewEmail());
+     String result = userService.initiateForgotPassword(email.getEmail());
      System.out.println(result);
      return ResponseEntity.ok(result);
     
