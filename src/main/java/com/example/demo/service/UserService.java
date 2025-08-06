@@ -16,5 +16,8 @@ public interface UserService extends UserDetailsService {
     User getUserByEmail(String email);
 	User updateUserByUsername(String username, UpdateUserRequest request);
 	void deleteUserById(Long id);
+	String resendOtp(String email);
+	String initiateForgotPassword(String email);
+	String resetPassword(ResetPasswordRequest request);	
 
 }

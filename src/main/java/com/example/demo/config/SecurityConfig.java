@@ -51,7 +51,7 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/register", "/api/auth/login", "/api/auth/verify-otp","/api/users/verify-otp-mail-updation").permitAll()
+                .requestMatchers("/api/auth/**","/api/users/verify-otp-mail-updation").permitAll()
                 .requestMatchers("/api/users/update-email","/api/users/me").authenticated()
                 .requestMatchers("/api/users/edit/**").hasAnyRole("USER", "ADMIN")
                 .requestMatchers("/api/users/**").hasRole("ADMIN")

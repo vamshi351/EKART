@@ -80,8 +80,6 @@ public class UserController {
      return ResponseEntity.ok("User with ID " + id + " deleted successfully.");
  }
 
-
-
  @GetMapping("/me")
  public ResponseEntity<?> getMe(Authentication authentication) {
      if (authentication == null || authentication.getName() == null) {

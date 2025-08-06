@@ -2,6 +2,7 @@ package com.example.demo.service;
 
 import java.util.Collections;
 import java.util.Optional;
+import java.util.Random;
 
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 import com.example.demo.config.JwtUtil;
 import com.example.demo.dto.RegisterRequest;
+import com.example.demo.dto.ResetPasswordRequest;
 import com.example.demo.dto.UpdateEmailRequest;
 import com.example.demo.dto.UpdateUserRequest;
 import com.example.demo.dto.UserDTO;
@@ -250,6 +252,30 @@ public class UserServiceImpl implements UserService, UserDetailsService {
                 Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()))
         );
     }
+
+    @Override
+    public String resendOtp(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
+
+        // Allow resend only if:
+        // - Email not verified (registration pending), OR
+        // - Email update in progress (pendingEmail exists)
+        if (user.isEmailVerified() && user.getPendingEmail() == null) {
+            throw new OtpValidationException("Email already verified. No OTP to resend.");
+        }
+
+        String otp = generateOtp();
+        user.setOtp(otp);
+        user.setOtpGeneratedTime(System.currentTimeMillis());
+        userRepository.save(user);
+
+        // If updating email, send OTP to new email
+        String destinationEmail = user.getPendingEmail() != null ? user.getPendingEmail() : user.getEmail();
+        emailService.sendOtpEmail(destinationEmail, otp);
+
+        return "OTP resent to " + destinationEmail;
+    }
     
     @Override
     public void deleteUserById(Long id) {
@@ -258,5 +284,42 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         }
         userRepository.deleteById(id);
     }
+    
+    @Override
+    public String initiateForgotPassword(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UserNotFoundException("User not found with email: " + email));
+
+        String otp = generateOtp();
+        user.setOtp(otp);
+        user.setOtpGeneratedTime(System.currentTimeMillis());
+        userRepository.save(user);
+
+        emailService.sendOtpEmail(user.getEmail(), otp); // Assume this method sends OTP to email
+        return "OTP sent to your email address.";
+    }
+
+    @Override
+    public String resetPassword(ResetPasswordRequest request) {
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new UserNotFoundException("User not found with email: " + request.getEmail()));
+
+        // Validate OTP expiry
+        long otpValidDuration = 3 * 60 * 1000; // 3 minutes
+        if (user.getOtp() == null || !user.getOtp().equals(request.getOtp())) {
+            throw new IllegalArgumentException("Invalid OTP.");
+        }
+        if (System.currentTimeMillis() - user.getOtpGeneratedTime() > otpValidDuration) {
+            throw new IllegalArgumentException("OTP expired.");
+        }
+
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        user.setOtp(null);
+        user.setOtpGeneratedTime(null);
+        userRepository.save(user);
+
+        return "Password reset successfully.";
+    }
+
 
 }

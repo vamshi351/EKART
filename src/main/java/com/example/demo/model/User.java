@@ -1,5 +1,10 @@
 package com.example.demo.model;
 
+import java.time.LocalDateTime;
+
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -39,4 +44,11 @@ public class User {
     private String pendingEmail; // Stores email to be updated to, until verified
 
     private Long otpGeneratedTime;
+    
+    @CreationTimestamp
+    @Column(updatable = false)
+    private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    private LocalDateTime updatedAt;
 }
