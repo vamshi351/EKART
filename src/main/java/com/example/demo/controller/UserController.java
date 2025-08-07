@@ -1,5 +1,7 @@
 package com.example.demo.controller;
 
+import java.util.List;
+
 //UserController.java
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -87,6 +89,16 @@ public class UserController {
      }
      User user = userService.getUserByEmail(authentication.getName());
      return ResponseEntity.ok(new UserDTO(user.getName(), user.getEmail(), user.getPhone()));
+ }
+ 
+ @GetMapping("/all")
+ @PreAuthorize("hasRole('ADMIN')")
+ public ResponseEntity<?> getListOfUsers(Authentication authentication) {
+     if (authentication == null || authentication.getName() == null) {
+         return ResponseEntity.status(401).body("Unauthorized");
+     }
+     List<User> users = userService.findAllUsers();
+     return ResponseEntity.ok(users);
  }
 
 

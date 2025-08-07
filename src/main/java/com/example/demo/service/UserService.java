@@ -1,9 +1,16 @@
 package com.example.demo.service;
 
-import com.example.demo.dto.*;
+import java.util.List;
+
+import org.springframework.security.core.userdetails.UserDetailsService;
+
+import com.example.demo.dto.RegisterRequest;
+import com.example.demo.dto.ResetPasswordRequest;
+import com.example.demo.dto.UpdateEmailRequest;
+import com.example.demo.dto.UpdateUserRequest;
+import com.example.demo.dto.VerifyOtpRequest;
 import com.example.demo.model.User;
 import com.example.demo.response.LoginResponse;
-import org.springframework.security.core.userdetails.UserDetailsService;
 
 public interface UserService extends UserDetailsService {
     String register(RegisterRequest request);
@@ -19,5 +26,6 @@ public interface UserService extends UserDetailsService {
 	String resendOtp(String email);
 	String initiateForgotPassword(String email);
 	String resetPassword(ResetPasswordRequest request);	
+	List<User> findAllUsers();
 
 }

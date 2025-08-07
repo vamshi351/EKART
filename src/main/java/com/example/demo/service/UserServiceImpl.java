@@ -1,6 +1,7 @@
 package com.example.demo.service;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 import java.util.Random;
 
@@ -320,6 +321,12 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
         return "Password reset successfully.";
     }
+
+	@Override
+	public List<User> findAllUsers() {
+		
+		return userRepository.findAll();
+	}
 
 
 }
