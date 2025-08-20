@@ -3,36 +3,13 @@ server:
   
 
 spring:
-  application:
-    name: api-gateway
   cloud:
     gateway:
-      globalcors:
-        corsConfigurations:
-          '[/**]':
-            allowedOrigins: "http://localhost:8080"
-            allowedMethods:
-              - GET
-              - POST
-              - PUT
-              - DELETE
-              - OPTIONS
-            allowedHeaders: "*"
-            allowCredentials: true
-      default-filters:
-        - name: DedupeResponseHeader
-          args:
-            strategy: RETAIN_FIRST
       discovery:
         locator:
           enabled: true
           lower-case-service-id: true
       routes:
-        - id: auth-service
-          uri: lb://user-service    # since your login API is in USER_SERVICE
-          predicates:
-            - Path=/api/auth/**
-
         - id: user-service
           uri: lb://user-service
           predicates:
@@ -46,6 +23,7 @@ spring:
             - Path=/api/products/**,/product-service/v3/api-docs
           filters:
             - RewritePath=/product-service/v3/api-docs, /v3/api-docs
+
 
           
 

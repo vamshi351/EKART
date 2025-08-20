@@ -57,7 +57,7 @@ public class JwtUtil {
 
         } catch (ExpiredJwtException e) {
             logger.warn("JWT token is expired: {}", e.getMessage());
-            throw e; // Re-throw to be caught by the filter for logging, or handle as needed
+            throw e;
         } catch (UnsupportedJwtException e) {
             logger.error("JWT token is unsupported: {}", e.getMessage());
             throw e;
@@ -73,20 +73,17 @@ public class JwtUtil {
         }
     }
 
-    // This is the correct validateToken method to use in the filter
-    public boolean validateToken(String token, UserDetails userDetails) {
+    public boolean isTokenValid(String token) {
         try {
-            final String email = extractEmail(token); // This will throw if the token is invalid/expired
-            return (email.equals(userDetails.getUsername()) && !isTokenExpired(token));
+            extractEmail(token);
+            return !isTokenExpired(token);
         } catch (JwtException | IllegalArgumentException e) {
-            // Log for debugging, but the exception from extractEmail already provides details
-            logger.warn("Token validation failed for user {}: {}", userDetails.getUsername(), e.getMessage());
+            logger.warn("Token validation failed: {}", e.getMessage());
             return false;
         }
     }
 
     private boolean isTokenExpired(String token) {
-        // This method also internally calls extractExpiration, which uses Jwts.parserBuilder()...
         return extractExpiration(token).before(new Date());
     }
 
