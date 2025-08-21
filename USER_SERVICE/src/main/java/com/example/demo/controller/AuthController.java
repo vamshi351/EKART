@@ -1,5 +1,8 @@
 package com.example.demo.controller;
 
+import java.util.ArrayList;
+import java.util.List;
+
 //AuthController.java
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,11 +15,13 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.demo.config.JwtUtil;
 import com.example.demo.dto.EmailRequest;
 import com.example.demo.dto.LoginRequest;
 import com.example.demo.dto.RegisterRequest;
 import com.example.demo.dto.ResetPasswordRequest;
 import com.example.demo.dto.VerifyOtpRequest;
+import com.example.demo.model.User;
 import com.example.demo.response.LoginResponse;
 import com.example.demo.service.UserService;
 
@@ -29,6 +34,11 @@ public class AuthController {
 
  @Autowired
  private UserService userService;
+ 
+ @Autowired
+ private JwtUtil jwtUtil;
+ 
+ 
 
  @PostMapping("/register")
  public ResponseEntity<String> register(@Valid @RequestBody RegisterRequest request) {
@@ -41,19 +51,20 @@ public class AuthController {
  private AuthenticationManager authenticationManager;
 
  @PostMapping("/login")
- public LoginResponse login(@RequestBody LoginRequest request) {
-     authenticationManager.authenticate(
-         new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
-     );
-     return userService.loginWithoutAuthentication(request.getEmail());
+ public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request) {
+     LoginResponse response = userService.login(request.getEmail(), request.getPassword());
+     return ResponseEntity.ok(response);
  }
+
+
+
 
 
  
  @PostMapping("/verify-otp")
- public ResponseEntity<LoginResponse> verifyOtp(@Valid @RequestBody VerifyOtpRequest request) {
-     LoginResponse jwtToken = userService.verifyOtp(request);
-     return ResponseEntity.ok(jwtToken);
+ public ResponseEntity<LoginResponse> verifyOtp(@RequestBody VerifyOtpRequest request) {
+     LoginResponse response = userService.verifyOtp(request);
+     return ResponseEntity.ok(response);
  }
  
  @PostMapping("/forgot-password")

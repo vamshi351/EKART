@@ -18,15 +18,13 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public Product createProduct(Product product) {
-        // Generate slug if not provided
         if (product.getSlug() == null || product.getSlug().isEmpty()) {
             product.setSlug(generateSlug(product.getName()));
         }
-        
-        // Set creation timestamp
+
         product.setCreatedAt(LocalDateTime.now());
         product.setUpdatedAt(LocalDateTime.now());
-        
+
         return productRepository.save(product);
     }
 
@@ -50,18 +48,17 @@ public class ProductServiceImpl implements ProductService {
                     existingProduct.setHeight(updatedProduct.getHeight());
                     existingProduct.setWidth(updatedProduct.getWidth());
                     existingProduct.setDepth(updatedProduct.getDepth());
-                    
-                    // Update slug if name changed
+
                     if (!existingProduct.getName().equals(updatedProduct.getName())) {
                         existingProduct.setSlug(generateSlug(updatedProduct.getName()));
                     }
-                    
+
                     existingProduct.setMetaTitle(updatedProduct.getMetaTitle());
                     existingProduct.setMetaDescription(updatedProduct.getMetaDescription());
                     existingProduct.setActive(updatedProduct.isActive());
                     existingProduct.setUpdatedAt(LocalDateTime.now());
                     existingProduct.setLastModifiedBy(updatedProduct.getLastModifiedBy());
-                    
+
                     return productRepository.save(existingProduct);
                 })
                 .orElseThrow(() -> new RuntimeException("Product not found with id: " + id));
@@ -84,7 +81,11 @@ public class ProductServiceImpl implements ProductService {
     public List<Product> getAllProducts() {
         return productRepository.findAll();
     }
-    
+
+    public List<Product> getProductsByCreatedBy(String createdBy) {
+        return productRepository.findByCreatedBy(createdBy);
+    }
+
     private String generateSlug(String name) {
         return name.toLowerCase()
                    .replaceAll("[^a-z0-9\\s]", "")

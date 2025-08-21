@@ -1,15 +1,14 @@
-// ===== 1. JwtAuthenticationFilter.java =====
 package com.example.demo.security;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.ArrayList;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -35,7 +34,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     HttpServletResponse response,
                                     FilterChain chain) throws ServletException, IOException {
         
-        // Skip authentication for public endpoints
         String path = request.getRequestURI();
         if (path.contains("/v3/api-docs") || path.contains("/swagger-ui") || 
             path.contains("/actuator") || path.contains("/health")) {
@@ -50,13 +48,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 String email = jwtUtil.extractEmail(token);
                 
                 if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                    if (jwtUtil.isTokenValid(token)) {
+                    if (jwtUtil.validateToken(token, email)) {
                         // Fetch user info from user-service
                         UserDTO userDTO = userClient.getMe("Bearer " + token);
                         
                         if (userDTO != null) {
-                            // Create authorities based on user type
-                            List<SimpleGrantedAuthority> authorities = createAuthoritiesFromUser(userDTO, email);
+                            // Extract roles from JWT token and prepend "ROLE_"
+                            List<SimpleGrantedAuthority> authorities = jwtUtil.extractRoles(token).stream()
+                                    .map(role -> role.startsWith("ROLE_") ? role : "ROLE_" + role)
+                                    .map(SimpleGrantedAuthority::new)
+                                    .collect(Collectors.toList());
                             
                             UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                                 email, null, authorities);
@@ -69,7 +70,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 }
             } catch (Exception e) {
                 System.err.println("JWT Authentication failed: " + e.getMessage());
-                // Clear any existing authentication
                 SecurityContextHolder.clearContext();
             }
         }
@@ -83,20 +83,5 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return bearer.substring(7);
         }
         return null;
-    }
-    
-    private List<SimpleGrantedAuthority> createAuthoritiesFromUser(UserDTO userDTO, String email) {
-        List<SimpleGrantedAuthority> authorities = new ArrayList<>();
-        
-        // Default role assignment - you might want to enhance UserDTO to include actual roles
-        authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
-        authorities.add(new SimpleGrantedAuthority("ROLE_SELLER"));
-        
-        // For admin users (you can modify this logic based on your requirements)
-        if (email.contains("admin")) {
-            authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
-        }
-        
-        return authorities;
     }
 }

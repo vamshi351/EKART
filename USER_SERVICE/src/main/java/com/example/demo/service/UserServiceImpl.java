@@ -87,11 +87,27 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     }
 
     @Override
+    public LoginResponse login(String email, String password) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+        if (!user.isEmailVerified()) {
+            throw new OtpValidationException("Email not verified. Please verify OTP.");
+        }
+        if (user.getPendingEmail() != null) {
+            throw new OtpValidationException("Email update in progress. Please verify OTP sent to your new email to login.");
+        }
+
+        List<String> roles = List.of(user.getRole().name()); // return String names of roles
+        String token = jwtUtil.generateToken(user.getEmail(), roles);
+
+        return new LoginResponse(token, user.getName(), user.getEmail(), user.getRole().name());
+    }
+
+    @Override
     public LoginResponse verifyOtp(@Valid VerifyOtpRequest request) {
-        // Try finding user by current email
         Optional<User> userOpt = userRepository.findByEmail(request.getEmail());
 
-        // If not found, try by pending email (email update scenario)
         if (userOpt.isEmpty()) {
             userOpt = userRepository.findByPendingEmail(request.getEmail());
         }
@@ -111,13 +127,11 @@ public class UserServiceImpl implements UserService, UserDetailsService {
             throw new OtpValidationException("Invalid OTP");
         }
 
-        // ✅ Commit email change if pending
         if (user.getPendingEmail() != null) {
             Optional<User> emailTaken = userRepository.findByEmail(user.getPendingEmail());
             if (emailTaken.isPresent() && !emailTaken.get().getId().equals(user.getId())) {
                 throw new EmailAlreadyExistsException("Email already taken: " + user.getPendingEmail());
             }
-
             user.setEmail(user.getPendingEmail());
             user.setPendingEmail(null);
         }
@@ -128,11 +142,16 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
         User savedUser = userRepository.save(user);
 
-        String token = jwtUtil.generateToken(savedUser.getEmail());
-        UserDTO userDTO = new UserDTO(savedUser.getName(), savedUser.getEmail(), savedUser.getPhone());
+        List<String> roles = List.of(savedUser.getRole().name());
+        String token = jwtUtil.generateToken(savedUser.getEmail(), roles);
 
-        return new LoginResponse(token, userDTO);
+        return new LoginResponse(token, savedUser.getName(), savedUser.getEmail(), savedUser.getRole().name());
     }
+
+
+   
+
+
 
 
     @Override
@@ -199,21 +218,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
     }
 
-    @Override
-    public LoginResponse login(String email, String password) {
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
-        // Cannot login if not verified
-        if (!user.isEmailVerified()) {
-            throw new OtpValidationException("Email not verified. Please verify OTP.");
-        }
-        // Cannot login with pendingEmail and before OTP verification
-        if (user.getPendingEmail() != null) {
-            throw new OtpValidationException("Email update in progress. Please verify OTP sent to your new email to login.");
-        }
-        String token = jwtUtil.generateToken(user.getEmail());
-        return new LoginResponse(token, new UserDTO(user.getName(), user.getEmail(), user.getPhone()));
-    }
+
 
     @Override
     public LoginResponse loginWithoutAuthentication(String email) {
@@ -226,9 +231,17 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         if (user.getPendingEmail() != null) {
             throw new OtpValidationException("Email update in progress. Please verify OTP sent to your new email to login.");
         }
-        String token = jwtUtil.generateToken(user.getEmail());
-        return new LoginResponse(token, new UserDTO(user.getName(), user.getEmail(), user.getPhone()));
+
+        // Prepare roles list from Role enum
+        List<String> roles = List.of(user.getRole().name());
+
+        // Generate JWT token with roles claim
+        String token = jwtUtil.generateToken(user.getEmail(), roles);
+
+        // Return LoginResponse with token, name, email, role (as string)
+        return new LoginResponse(token, user.getName(), user.getEmail(), user.getRole().name());
     }
+
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
@@ -333,12 +346,11 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 	@Override
 	public void requestSellerRole(String email) {
 	    User user = userRepository.findByEmail(email)
-	            .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
+	        .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
 
 	    if (user.getRole() == Role.SELLER) {
 	        throw new IllegalStateException("You are already a seller.");
 	    }
-
 	    if (user.getRole() == Role.ADMIN) {
 	        throw new IllegalStateException("Admin cannot request seller role.");
 	    }
@@ -346,6 +358,8 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 	    user.setRole(Role.SELLER);
 	    userRepository.save(user);
 	}
+
+
 
 
 }

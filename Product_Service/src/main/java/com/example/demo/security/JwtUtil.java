@@ -1,17 +1,18 @@
-// src/main/java/com/example/demo/config/JwtUtil.java
 package com.example.demo.security;
-
-import io.jsonwebtoken.*;
-import io.jsonwebtoken.security.Keys;
-import io.jsonwebtoken.security.SignatureException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.core.userdetails.UserDetails; // Make sure this import exists
-import org.springframework.stereotype.Component;
 
 import java.security.Key;
 import java.util.Date;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+import io.jsonwebtoken.*;
+
+import io.jsonwebtoken.security.Keys;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Component
 public class JwtUtil {
@@ -28,57 +29,41 @@ public class JwtUtil {
         return Keys.hmacShaKeyFor(secret.getBytes());
     }
 
-    public String generateToken(String email) {
-        if (email == null || email.isBlank()) {
-            throw new IllegalArgumentException("Email cannot be null or empty");
-        }
-
+    /** Generate JWT token with roles claim */
+    public String generateToken(String username, List<String> roles) {
         return Jwts.builder()
-                .setSubject(email)
+                .setSubject(username)
+                .claim("roles", roles)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + expirationMs))
-                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                .signWith(getSigningKey(), SignatureAlgorithm.HS512)
                 .compact();
     }
 
-    public String extractEmail(String token) {
-        if (token == null || token.isBlank()) {
-            throw new MalformedJwtException("Token is null or empty");
+    /** Extract roles list from JWT */
+    public List<String> extractRoles(String token) {
+        Claims claims = parseClaims(token);
+        Object rolesObj = claims.get("roles");
+        if (rolesObj instanceof List<?>) {
+            return ((List<?>) rolesObj).stream()
+                    .map(Object::toString)
+                    .collect(Collectors.toList());
         }
-
-        try {
-            Claims claims = Jwts.parserBuilder()
-                    .setSigningKey(getSigningKey())
-                    .build()
-                    .parseClaimsJws(token)
-                    .getBody();
-
-            return claims.getSubject();
-
-        } catch (ExpiredJwtException e) {
-            logger.warn("JWT token is expired: {}", e.getMessage());
-            throw e;
-        } catch (UnsupportedJwtException e) {
-            logger.error("JWT token is unsupported: {}", e.getMessage());
-            throw e;
-        } catch (MalformedJwtException e) {
-            logger.error("JWT token is invalid: {}", e.getMessage());
-            throw e;
-        } catch (SignatureException e) {
-            logger.error("JWT signature is invalid: {}", e.getMessage());
-            throw e;
-        } catch (IllegalArgumentException e) {
-            logger.error("JWT claims string is empty: {}", e.getMessage());
-            throw e;
-        }
+        return List.of();
     }
 
-    public boolean isTokenValid(String token) {
+    /** Extract username/email from JWT */
+    public String extractEmail(String token) {
+        return parseClaims(token).getSubject();
+    }
+
+    /** Validate token based on username/email (overload for simpler input) */
+    public boolean validateToken(String token, String username) {
         try {
-            extractEmail(token);
-            return !isTokenExpired(token);
+            final String email = extractEmail(token);
+            return (email.equals(username) && !isTokenExpired(token));
         } catch (JwtException | IllegalArgumentException e) {
-            logger.warn("Token validation failed: {}", e.getMessage());
+            logger.warn("Token validation failed for user {}: {}", username, e.getMessage());
             return false;
         }
     }
@@ -88,11 +73,14 @@ public class JwtUtil {
     }
 
     private Date extractExpiration(String token) {
-        Claims claims = Jwts.parserBuilder()
+        return parseClaims(token).getExpiration();
+    }
+        
+    private Claims parseClaims(String token) {
+        return Jwts.parserBuilder()
                 .setSigningKey(getSigningKey())
                 .build()
                 .parseClaimsJws(token)
                 .getBody();
-        return claims.getExpiration();
     }
 }

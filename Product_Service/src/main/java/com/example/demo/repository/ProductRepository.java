@@ -23,6 +23,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     
     Optional<Product> findBySlug(String slug);
     
+    List<Product> findByCreatedBy(String createdBy);
+    
     @Query("SELECT p FROM Product p WHERE p.name ILIKE %:name%")
     List<Product> findByNameContainingIgnoreCase(@Param("name") String name);
     

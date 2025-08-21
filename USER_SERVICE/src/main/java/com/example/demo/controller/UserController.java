@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.demo.config.JwtUtil;
 import com.example.demo.dto.UpdateEmailRequest;
 import com.example.demo.dto.UpdateUserRequest;
 import com.example.demo.dto.UserDTO;
@@ -37,6 +38,11 @@ public class UserController {
 
  @Autowired
  private UserService userService;
+ 
+ @Autowired
+ private JwtUtil jwtUtil;
+ 
+ 
 
  @GetMapping("/{id}")
  @PreAuthorize("hasRole('ADMIN')")
@@ -88,7 +94,7 @@ public class UserController {
          return ResponseEntity.status(401).body("Unauthorized");
      }
      User user = userService.getUserByEmail(authentication.getName());
-     return ResponseEntity.ok(new UserDTO(user.getName(), user.getEmail(), user.getPhone()));
+     return ResponseEntity.ok(new UserDTO(user.getName(),user.getPhone(),user.getEmail()));
  }
  
  @GetMapping("/all")
@@ -104,16 +110,32 @@ public class UserController {
 //UserController.java
 
  @PostMapping("/request-seller-role")
- @PreAuthorize("hasRole('USER')")
+ @PreAuthorize("hasRole('USER')") // only USER can request
  public ResponseEntity<?> requestSellerRole(Authentication authentication) {
      String email = authentication.getName();
      try {
          userService.requestSellerRole(email);
-         return ResponseEntity.ok("You are now a seller!");
+
+         // fetch updated user
+         User updatedUser = userService.getUserByEmail(email);
+
+         // generate new token with SELLER role
+         String newToken = jwtUtil.generateToken(
+                 updatedUser.getEmail(),
+                 List.of(updatedUser.getRole().name()) // ensure it's a String
+         );
+
+         return ResponseEntity.ok(
+             new LoginResponse(newToken, updatedUser.getName(),
+                     updatedUser.getEmail(), updatedUser.getRole().name())
+         );
+
      } catch (IllegalStateException e) {
          return ResponseEntity.badRequest().body(e.getMessage());
      }
  }
+
+
  
  @GetMapping("/email/{email}")
  @PreAuthorize("hasAnyRole('USER', 'ADMIN','SELLER')")
