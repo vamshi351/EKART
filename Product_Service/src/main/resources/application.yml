@@ -1,6 +1,12 @@
 spring:
   application:
     name: product-service
+  boot:
+    admin:
+      client:
+        url: http://localhost:9090
+        username: admin
+        password: admin  
 
   datasource:
     url: jdbc:mysql://localhost:3306/vamshi

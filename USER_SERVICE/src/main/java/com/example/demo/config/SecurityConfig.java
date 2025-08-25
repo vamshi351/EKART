@@ -55,6 +55,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/auth/**","/api/users/verify-otp-mail-updation",
                 	    "/v3/api-docs/**",
                 	    "/swagger-ui/**",
+                	    "/",
                 	    "/swagger-ui.html","/actuator/**").permitAll()
                 .requestMatchers("/api/users/update-email","/api/users/me").authenticated()
                 .requestMatchers("/api/users/edit/**").hasAnyRole("USER", "ADMIN","SELLER")

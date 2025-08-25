@@ -4,6 +4,18 @@ server:
 spring:
   application:
     name: user-service
+  boot:
+    admin:
+      client:
+        url: http://localhost:9090
+        username: admin
+        password: admin
+        instance:
+          name: user-service
+          service-url: http://192.168.29.4:8083
+          management-url: http://192.168.29.4:8083/actuator
+          health-url: http://192.168.29.4:8083/actuator/health
+
   datasource:
     url: jdbc:mysql://localhost:3306/vamshi
     username: root
@@ -64,3 +76,5 @@ management:
   endpoint:
     health:
       show-details: always
+  security:
+    enabled: false  
