@@ -19,9 +19,9 @@ spring:
           lower-case-service-id: true
       routes:
         - id: user-service
-          uri: lb://user-service
+          uri: lb://USER-SERVICE
           predicates:
-            - Path=/api/users/**,/user-service/v3/api-docs
+            - Path=/api/users/**,/api/auth/**,/user-service/v3/api-docs
           filters:
             - RewritePath=/user-service/v3/api-docs, /v3/api-docs
 

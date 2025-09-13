@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Random;
 
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -96,6 +97,11 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         }
         if (user.getPendingEmail() != null) {
             throw new OtpValidationException("Email update in progress. Please verify OTP sent to your new email to login.");
+        }
+
+        // ✅ password check
+        if (!passwordEncoder.matches(password, user.getPassword())) {
+            throw new BadCredentialsException("Invalid email or passwordd");
         }
 
         List<String> roles = List.of(user.getRole().name()); // return String names of roles

@@ -1,14 +1,11 @@
 package com.example.demo.controller;
 
-import java.util.ArrayList;
-import java.util.List;
-
 //AuthController.java
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -21,7 +18,6 @@ import com.example.demo.dto.LoginRequest;
 import com.example.demo.dto.RegisterRequest;
 import com.example.demo.dto.ResetPasswordRequest;
 import com.example.demo.dto.VerifyOtpRequest;
-import com.example.demo.model.User;
 import com.example.demo.response.LoginResponse;
 import com.example.demo.service.UserService;
 
@@ -29,7 +25,6 @@ import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin
 public class AuthController {
 
  @Autowired
@@ -53,7 +48,10 @@ public class AuthController {
  @PostMapping("/login")
  public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request) {
      LoginResponse response = userService.login(request.getEmail(), request.getPassword());
-     return ResponseEntity.ok(response);
+     System.err.println(response);
+     return ResponseEntity.ok()
+             .contentType(MediaType.APPLICATION_JSON)
+             .body(response);
  }
 
 
