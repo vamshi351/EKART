@@ -10,27 +10,26 @@ import org.springframework.security.web.server.SecurityWebFilterChain;
 @EnableWebFluxSecurity
 public class SecurityConfig {
 
-	@Bean
-	public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
-	    return http
-	            .csrf(ServerHttpSecurity.CsrfSpec::disable)
-	            .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)  // ✅ Disable Basic Auth popup
-	            .formLogin(ServerHttpSecurity.FormLoginSpec::disable)  // ✅ Disable login form
-	            .authorizeExchange(exchanges -> exchanges
-	                    .pathMatchers(
-	                            "/swagger-ui.html",
-	                            "/swagger-ui/**",
-	                            "/v3/api-docs/**",
-	                            "/user-service/v3/api-docs",
-	                            "/product-service/v3/api-docs",
-	                            "/webjars/**",
-	                            "/api/auth/**",
-	                            "/actuator/**"
-	                    ).permitAll()
-	                    .anyExchange().authenticated()
-	            )
-	            .build();
-	}
-
+    @Bean
+    public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
+        return http
+                .csrf(ServerHttpSecurity.CsrfSpec::disable)
+                .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)
+                .formLogin(ServerHttpSecurity.FormLoginSpec::disable)
+                .authorizeExchange(exchanges -> exchanges
+                        .pathMatchers(
+                                "/swagger-ui.html",
+                                "/swagger-ui/**",
+                                "/v3/api-docs/**",
+                                "/user-service/v3/api-docs",
+                                "/product-service/v3/api-docs",
+                                "/webjars/**",
+                                "/api/auth/**",
+                                "/api/products/**",   // ✅ FIXED
+                                "/actuator/**"
+                        ).permitAll()
+                        .anyExchange().authenticated()
+                )
+                .build();
+    }
 }
-

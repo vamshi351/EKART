@@ -28,6 +28,7 @@ public class AuthenticationFilter implements WebFilter {
                 || path.startsWith("/product-service/v3/api-docs")
                 || path.startsWith("/webjars")
                 || path.startsWith("/api/auth")
+                || path.startsWith("/api/products")
                 || path.startsWith("/actuator")) {
             return chain.filter(exchange);
         }

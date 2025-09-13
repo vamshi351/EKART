@@ -34,7 +34,7 @@ public class ProductController {
 
     // SELLER or ADMIN can create
     @PreAuthorize("hasAnyRole('SELLER','ADMIN')")
-    @PostMapping("/create")
+    @PostMapping("/create") 
     public ResponseEntity<?> createProduct(@Valid @RequestBody Product product) {
         try {
             Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -53,9 +53,10 @@ public class ProductController {
     }
 
     // ANYONE can view all products
-    @GetMapping
+    @GetMapping("/allProducts")
     public ResponseEntity<?> getAllProducts() {
         try {
+        	System.err.println("Entered inside product-service");
             return ResponseEntity.ok(productService.getAllProducts());
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

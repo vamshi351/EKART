@@ -26,7 +26,7 @@ spring:
             - RewritePath=/user-service/v3/api-docs, /v3/api-docs
 
         - id: product-service
-          uri: lb://product-service
+          uri: lb://PRODUCT-SERVICE
           predicates:
             - Path=/api/products/**,/product-service/v3/api-docs
           filters:

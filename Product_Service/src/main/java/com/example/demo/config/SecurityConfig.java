@@ -2,6 +2,7 @@ package com.example.demo.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -26,11 +27,16 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http.csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/products/create").hasAnyRole("SELLER", "ADMIN")
-                .requestMatchers("/api/products/update/**").hasAnyRole("SELLER", "ADMIN")
-                .requestMatchers("/api/products/delete/**").hasAnyRole("SELLER", "ADMIN")
-                .requestMatchers("/api/products/**").permitAll()
+                // Public endpoints (shop users can see products without login)
+                .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/actuator/**", "/health").permitAll()
+
+                // Restricted endpoints (only SELLER or ADMIN)
+                .requestMatchers(HttpMethod.POST, "/api/products/**").hasAnyRole("SELLER", "ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/products/**").hasAnyRole("SELLER", "ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/products/**").hasAnyRole("SELLER", "ADMIN")
+
+                // Everything else must be authenticated
                 .anyRequest().authenticated()
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
